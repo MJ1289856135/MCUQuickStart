@@ -1,6 +1,6 @@
 """Project generator: orchestrate directory creation, file copying, and template rendering."""
 from pathlib import Path
-from src.core.template_engine import render, copy_file
+from src.core.template_engine import render
 from src.core.sdk_manager import SDKManager
 
 

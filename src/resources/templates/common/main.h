@@ -36,10 +36,6 @@ OF SUCH DAMAGE.
 #define MAIN_H
 
 #include "delay.h"
-#include "bsp_usart.h"
-#include "bsp_gpio.h"
-#include "bsp_led.h"
-#include "bsp_exti.h"
 
 
 #endif /* MAIN_H */

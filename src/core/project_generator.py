@@ -71,9 +71,16 @@ class ProjectGenerator:
             mdk_dir.mkdir(parents=True, exist_ok=True)
             render(uvprojx_template, mdk_dir / f"{project_name}.uvprojx", variables)
 
+    @staticmethod
+    def _kb_to_hex(kb: int) -> str:
+        return f"0x{int(kb) * 1024:X}"
+
     def _build_uvprojx_vars(self, project_name: str, chip_name: str, chip_config: dict) -> dict:
         """Build template variables map for uvprojx generation."""
         config = chip_config.get("config", {})
+        startup = chip_config.get("startup", "")
+        # Derive flash driver name from startup: startup_gd32f10x_md.s → GD32F10x_MD
+        flash_driver = startup.replace("startup_", "").replace(".s", "").upper()
         return {
             "PROJECT_NAME": project_name,
             "CHIP": chip_name,
@@ -81,9 +88,9 @@ class ProjectGenerator:
             "DEVICE_DEFINE": chip_config.get("device_define", ""),
             "CPU_TYPE": config.get("cpu_type", ""),
             "RAM_START": config.get("ram_start", ""),
-            "RAM_SIZE": config.get("ram_size", ""),
+            "RAM_SIZE": self._kb_to_hex(chip_config.get("ram_kb", 20)),
             "ROM_START": config.get("rom_start", ""),
-            "ROM_SIZE": config.get("rom_size", ""),
+            "ROM_SIZE": self._kb_to_hex(chip_config.get("flash_kb", 64)),
             "CLOCK": config.get("clock", ""),
             "SIM_DLL": config.get("sim_dll", ""),
             "TARGET_DLL": config.get("target_dll", ""),
@@ -92,5 +99,6 @@ class ProjectGenerator:
             "DLG_ARGUMENTS": config.get("dlg_arguments", ""),
             "VENDOR": chip_config.get("vendor", ""),
             "PACK_ID": chip_config.get("pack_id", ""),
-            "STARTUP_FILE": chip_config.get("startup", ""),
+            "STARTUP_FILE": startup,
+            "FLASH_DRIVER": flash_driver,
         }

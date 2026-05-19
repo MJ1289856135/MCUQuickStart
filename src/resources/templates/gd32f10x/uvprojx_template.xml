@@ -19,10 +19,10 @@
           <Vendor>{{VENDOR}}</Vendor>
           <PackID>{{PACK_ID}}</PackID>
           <PackURL>https://gd32mcu.com/data/documents/pack/</PackURL>
-          <Cpu>IRAM(0x20000000,0x00005000) IROM(0x08000000,0x00020000) CPUTYPE("{{CPU_TYPE}}") CLOCK(12000000) ELITTLE</Cpu>
+          <Cpu>IRAM({{RAM_START}},{{RAM_SIZE}}) IROM({{ROM_START}},{{ROM_SIZE}}) CPUTYPE("{{CPU_TYPE}}") CLOCK(12000000) ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
           <StartupFile></StartupFile>
-          <FlashDriverDll>UL2CM3(-S0 -C0 -P0 -FD20000000 -FC1000 -FN1 -FF0GD32F10x_MD -FS08000000 -FL020000 -FP0($$Device:{{CHIP}}$Flash\GD32F10x_MD.FLM))</FlashDriverDll>
+          <FlashDriverDll>UL2CM3(-S0 -C0 -P0 -FD20000000 -FC1000 -FN1 -FF0{{FLASH_DRIVER}} -FS08000000 -FL020000 -FP0($$Device:{{CHIP}}$Flash\{{FLASH_DRIVER}}.FLM))</FlashDriverDll>
           <DeviceId>0</DeviceId>
           <RegisterFile>$$Device:{{CHIP}}$Device\Include\gd32f10x.h</RegisterFile>
           <MemoryEnv></MemoryEnv>
@@ -247,13 +247,13 @@
               </Ocm6>
               <IRAM>
                 <Type>0</Type>
-                <StartAddress>0x20000000</StartAddress>
-                <Size>0x5000</Size>
+                <StartAddress>{{RAM_START}}</StartAddress>
+                <Size>{{RAM_SIZE}}</Size>
               </IRAM>
               <IROM>
                 <Type>1</Type>
-                <StartAddress>0x8000000</StartAddress>
-                <Size>0x20000</Size>
+                <StartAddress>{{ROM_START}}</StartAddress>
+                <Size>{{ROM_SIZE}}</Size>
               </IROM>
               <XRAM>
                 <Type>0</Type>
@@ -277,8 +277,8 @@
               </OCR_RVCT3>
               <OCR_RVCT4>
                 <Type>1</Type>
-                <StartAddress>0x8000000</StartAddress>
-                <Size>0x20000</Size>
+                <StartAddress>{{ROM_START}}</StartAddress>
+                <Size>{{ROM_SIZE}}</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
                 <Type>1</Type>
@@ -302,8 +302,8 @@
               </OCR_RVCT8>
               <OCR_RVCT9>
                 <Type>0</Type>
-                <StartAddress>0x20000000</StartAddress>
-                <Size>0x5000</Size>
+                <StartAddress>{{RAM_START}}</StartAddress>
+                <Size>{{RAM_SIZE}}</Size>
               </OCR_RVCT9>
               <OCR_RVCT10>
                 <Type>0</Type>
@@ -369,8 +369,8 @@
             <noStLib>0</noStLib>
             <RepFail>1</RepFail>
             <useFile>0</useFile>
-            <TextAddressRange>0x08000000</TextAddressRange>
-            <DataAddressRange>0x20000000</DataAddressRange>
+            <TextAddressRange>{{ROM_START}}</TextAddressRange>
+            <DataAddressRange>{{RAM_START}}</DataAddressRange>
             <pXoBase></pXoBase>
             <ScatterFile></ScatterFile>
             <IncludeLibs></IncludeLibs>
@@ -446,9 +446,9 @@
           <GroupName>STARTUP</GroupName>
           <Files>
             <File>
-              <FileName>startup_gd32f10x_md.s</FileName>
+              <FileName>{{STARTUP_FILE}}</FileName>
               <FileType>2</FileType>
-              <FilePath>..\CMSIS\GD\GD32F10x\Source\ARM\startup_gd32f10x_md.s</FilePath>
+              <FilePath>..\CMSIS\GD\GD32F10x\Source\ARM\{{STARTUP_FILE}}</FilePath>
             </File>
           </Files>
         </Group>

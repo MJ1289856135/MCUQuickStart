@@ -16,7 +16,7 @@
 
 一句话概括：**选择芯片型号，自动生成 Keil5 工程模板，打开就能编译运行。**
 
-![主界面截图](这里替换成你的软件界面截图)
+![主界面截图](https://cdn.jsdelivr.net/gh/MJ1289856135/-MCUQuickStart@main/docs/screenshot_1_main_window.png)
 
 目前支持的芯片：
 
@@ -47,7 +47,7 @@
 | 宏定义写错了导致编译报错，排查半天 | 每颗芯片独立的 `define`，预设验证过 |
 | 换一颗芯片，上面所有步骤重来一遍 | 同一界面，下拉选个型号就行 |
 
-![生成流程截图](这里替换成生成流程的截图)
+![生成流程截图](https://cdn.jsdelivr.net/gh/MJ1289856135/-MCUQuickStart@main/docs/screenshot_2_generate.png)
 
 ---
 
@@ -64,7 +64,7 @@
 
 然后用 Keil5 打开 `MDK-ARM/项目名.uvprojx`，直接编译——一把过。
 
-![编译成功截图](这里替换成Keil编译0Error的截图)
+![编译成功截图](https://cdn.jsdelivr.net/gh/MJ1289856135/-MCUQuickStart@main/docs/screenshot_3_compile_ok.png)
 
 ---
 

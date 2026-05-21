@@ -211,7 +211,7 @@ class ProjectGenerator:
         if not system_files:
             return
         system_file = system_files[0]
-        content = system_file.read_text(encoding="utf-8")
+        content = system_file.read_text(encoding="utf-8", errors="replace")
 
         hxtal_mhz = hxtal_hz // 1000000
         target_suffix = f"{hxtal_mhz}M"

@@ -2,6 +2,7 @@
 #define FREERTOS_CONFIG_H
 
 #include <stdint.h>
+#include <stdio.h>
 extern uint32_t SystemCoreClock;
 
 #define configASSERT(x) if((x)==0) { printf("FreeRTOS Assert:%s,%d\r\n",__FILE__,__LINE__); while(1); }

@@ -112,6 +112,16 @@ class MainWindow(QMainWindow):
         row3.addWidget(self._out_btn)
         proj_layout.addLayout(row3)
 
+        row4 = QHBoxLayout()
+        self._hxtal_label = QLabel()
+        row4.addWidget(self._hxtal_label)
+        self._hxtal_combo = QComboBox()
+        self._hxtal_combo.addItems(["8 MHz", "12 MHz", "16 MHz", "25 MHz"])
+        self._hxtal_combo.setCurrentText("25 MHz")
+        row4.addWidget(self._hxtal_combo)
+        row4.addStretch()
+        proj_layout.addLayout(row4)
+
         layout.addWidget(self._proj_group)
 
         # --- Template Choice ---
@@ -170,6 +180,7 @@ class MainWindow(QMainWindow):
         self._lib_group.setTitle(self._tr("optional_libs"))
         self._lib_freertos.setText(self._tr("lib_freertos"))
         self._help_btn.setText(self._tr("help"))
+        self._hxtal_label.setText(self._tr("hxtal_freq"))
 
     # ── Help ─────────────────────────────────────────────────────
     def _show_help(self):
@@ -230,6 +241,14 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, self._tr("error"),
                                 self._tr("err_chip_not_found", chip=chip))
             return
+
+        hxtal_text = self._hxtal_combo.currentText()
+        hxtal_mhz = int(hxtal_text.split()[0])
+        chip_config = dict(chip_config)  # shallow copy to avoid mutating cache
+        if "config" not in chip_config:
+            chip_config["config"] = {}
+        chip_config["config"] = dict(chip_config["config"])
+        chip_config["config"]["hxtal_hz"] = hxtal_mhz * 1000000
 
         tmpl_type = "empty"
         if self._tmpl_led.isChecked():

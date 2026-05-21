@@ -301,6 +301,16 @@ class ProjectGenerator:
         ram_start = int(config.get("ram_start", "0x20000000"), 16)
         rom_start = int(config.get("rom_start", "0x08000000"), 16)
 
+        # HXTAL compiler define (overrides SDK header default)
+        hxtal_hz = config.get("hxtal_hz", 0)
+        hxtal_defines = ""
+        if hxtal_hz > 0:
+            family = chip_config.get("family", "")
+            if "GD32" in family:
+                hxtal_defines = f",HXTAL_VALUE={hxtal_hz}"
+            elif "STM32" in family:
+                hxtal_defines = f",HSE_VALUE={hxtal_hz}"
+
         variables = {
             "PROJECT_NAME": project_name,
             "CHIP": chip_config.get("device", chip_name),
@@ -327,6 +337,7 @@ class ProjectGenerator:
             "STARTUP_FILE": startup,
             "FLASH_DRIVER": flash_driver,
             "FWLIB_FILES": self._scan_fwlib_files(output_dir, chip_config.get("fwlib_exclude")),
+            "HXTAL_DEFINES": hxtal_defines,
         }
 
         if use_freertos:

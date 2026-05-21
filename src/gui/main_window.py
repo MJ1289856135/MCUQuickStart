@@ -44,8 +44,12 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
 
-        # --- Top bar: language selector ---
+        # --- Top bar: help button + language selector ---
         top = QHBoxLayout()
+        self._help_btn = QPushButton()
+        self._help_btn.setFixedWidth(80)
+        self._help_btn.clicked.connect(self._show_help)
+        top.addWidget(self._help_btn)
         top.addStretch()
         top.addWidget(QLabel(""))
         self._lang_label = top.itemAt(top.count() - 1).widget()
@@ -165,6 +169,11 @@ class MainWindow(QMainWindow):
         self._log_group.setTitle(self._tr("log"))
         self._lib_group.setTitle(self._tr("optional_libs"))
         self._lib_freertos.setText(self._tr("lib_freertos"))
+        self._help_btn.setText(self._tr("help"))
+
+    # ── Help ─────────────────────────────────────────────────────
+    def _show_help(self):
+        QMessageBox.information(self, self._tr("help"), self._tr("help_text"))
 
     # ── Language switch ──────────────────────────────────────────
     def _on_lang_changed(self, text: str):

@@ -19,7 +19,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(680, 580)
 
         self._i18n = I18n(Path(__file__).parent.parent / "resources" / "i18n")
-        self._i18n.set_language("zh")
+        self._i18n.set_language("en")
 
         self._sdk = SDKManager()
         self._sdk.load_config()
@@ -55,7 +55,7 @@ class MainWindow(QMainWindow):
         self._lang_label = top.itemAt(top.count() - 1).widget()
         self._lang_combo = QComboBox()
         self._lang_combo.addItems(["中文", "English"])
-        self._lang_combo.setCurrentText("中文")
+        self._lang_combo.setCurrentText("English")
         self._lang_combo.currentTextChanged.connect(self._on_lang_changed)
         top.addWidget(self._lang_combo)
         layout.addLayout(top)

@@ -49,7 +49,8 @@
       "Bash(python3 -c ' *)",
       "Bash(ssh *)",
       "Bash(ssh-keygen *)",
-      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); [print\\(r['name'], '-', r['language'] or 'N/A', '- stars:', r['stargazers_count']\\) for r in data]\")"
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); [print\\(r['name'], '-', r['language'] or 'N/A', '- stars:', r['stargazers_count']\\) for r in data]\")",
+      "Bash(xxd \"E:/MJ_Demo/Project_Tool/src/resources/templates/system/sysconfig.c\")"
     ]
   }
 }

@@ -21,6 +21,7 @@ add_compile_options(
     -fno-common
     -fmessage-length=0
     -Wall
+    -Wno-unused-function
 )
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")

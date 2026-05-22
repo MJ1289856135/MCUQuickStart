@@ -1,4 +1,5 @@
 """Project generator: orchestrate directory creation, file copying, and template rendering."""
+import shutil
 from pathlib import Path
 from src.core.template_engine import render
 from src.core.sdk_manager import SDKManager
@@ -121,12 +122,19 @@ class ProjectGenerator:
 
     def generate(self, family_name: str, chip_name: str, chip_config: dict,
                  project_name: str, output_dir: Path, template_type: str,
-                 optional_libs: list[str] | None = None):
-        """Generate a complete project."""
+                 optional_libs: list[str] | None = None,
+                 build_system: str = "keil"):
+        """Generate a complete project.
+
+        Args:
+            build_system: "keil" (default), "gcc", or "both"
+        """
         output_dir.mkdir(parents=True, exist_ok=True)
         family_lower = family_name.lower()
 
         use_freertos = optional_libs and "freertos" in optional_libs
+        use_gcc = build_system in ("gcc", "both")
+        use_keil = build_system in ("keil", "both")
         cv = self._code_vars(chip_config, use_freertos)
 
         # 1. Copy firmware from SDK
@@ -163,6 +171,7 @@ class ProjectGenerator:
         user_dir = output_dir / "USER"
         user_dir.mkdir(parents=True, exist_ok=True)
         skip_files = set(chip_config.get("common_skip", []))
+        skip_files.update(["linker.ld", "CMakeLists.txt"])  # handled by _generate_gcc()
         global_common = self._templates_dir / "common"
         if global_common.exists():
             for src_file in global_common.iterdir():
@@ -181,6 +190,8 @@ class ProjectGenerator:
         # 7. Setup FreeRTOS if enabled (after SDK templates to overwrite it.c)
         if use_freertos:
             self._setup_freertos(output_dir, chip_config, cv)
+            if use_gcc:
+                self._gcc_freertos_port(output_dir, chip_config)
 
         # 7. Render main.c
         if use_freertos:
@@ -196,13 +207,19 @@ class ProjectGenerator:
                 if rt.exists():
                     rt.unlink()
 
-        # 8. Generate .uvprojx from template
-        uvprojx_template = self._templates_dir / family_lower / "uvprojx_template.xml"
-        if uvprojx_template.exists():
-            variables = self._build_uvprojx_vars(project_name, chip_name, chip_config, output_dir, use_freertos)
-            mdk_dir = output_dir / "MDK-ARM"
-            mdk_dir.mkdir(parents=True, exist_ok=True)
-            render(uvprojx_template, mdk_dir / f"{project_name}.uvprojx", variables)
+        # 8. Generate GCC/CMake output
+        if use_gcc:
+            cmake_vars = self._build_cmake_vars(project_name, chip_name, chip_config, use_freertos)
+            self._generate_gcc(output_dir, project_name, chip_config, cmake_vars)
+
+        # 9. Generate Keil .uvprojx from template
+        if use_keil:
+            uvprojx_template = self._templates_dir / family_lower / "uvprojx_template.xml"
+            if uvprojx_template.exists():
+                variables = self._build_uvprojx_vars(project_name, chip_name, chip_config, output_dir, use_freertos)
+                mdk_dir = output_dir / "MDK-ARM"
+                mdk_dir.mkdir(parents=True, exist_ok=True)
+                render(uvprojx_template, mdk_dir / f"{project_name}.uvprojx", variables)
 
     @staticmethod
     def _patch_system_clock(output_dir: Path, family_lower: str, hxtal_hz: int):
@@ -230,6 +247,120 @@ class ProjectGenerator:
     @staticmethod
     def _kb_to_hex(kb: int) -> str:
         return f"0x{int(kb) * 1024:X}"
+
+    def _build_cmake_vars(self, project_name: str, chip_name: str, chip_config: dict,
+                           use_freertos: bool = False) -> dict:
+        """Build template variables for CMakeLists.txt and linker.ld generation."""
+        config = chip_config.get("config", {})
+        cpu_type = config.get("cpu_type", "Cortex-M3")
+        cpu_flags = config.get("cpu_flags", "")
+        ram_kb = chip_config.get("ram_kb", 20)
+        flash_kb = chip_config.get("flash_kb", 64)
+        startup_file = chip_config.get("startup", "")
+        device_define = chip_config.get("define", "")
+        device_path = chip_config.get("cmsis", {}).get("device_path", "")
+
+        gcc_cpu = cpu_type.lower()
+        fpu_flags = ""
+        if cpu_flags in ("FPU2", "FPU"):
+            fpu_flags = "-mfloat-abi=hard -mfpu=fpv4-sp-d16"
+        else:
+            fpu_flags = "-mfloat-abi=soft"
+
+        hxtal_hz = config.get("hxtal_hz", 0)
+        hxtal_defines = ""
+        if hxtal_hz > 0:
+            family = chip_config.get("family", "")
+            if "GD32" in family:
+                hxtal_defines = f"HXTAL_VALUE={hxtal_hz}"
+            elif "STM32" in family:
+                hxtal_defines = f"HSE_VALUE={hxtal_hz}"
+
+        variables = {
+            "PROJECT_NAME": project_name,
+            "MCPU": gcc_cpu,
+            "FPU_FLAGS": fpu_flags,
+            "DEVICE_DEFINE": device_define,
+            "HXTAL_DEFINES": hxtal_defines,
+            "DEVICE_INC_REL": device_path,
+            "STARTUP_FILE": startup_file,
+            "LINKER_SCRIPT": f"{project_name}.ld",
+            "RAM_START": config.get("ram_start", "0x20000000"),
+            "RAM_SIZE": self._kb_to_hex(ram_kb),
+            "ROM_START": config.get("rom_start", "0x08000000"),
+            "ROM_SIZE": self._kb_to_hex(flash_kb),
+        }
+
+        if use_freertos:
+            fr_cfg = chip_config.get("optional_libs", {}).get("freertos", {})
+            core_name = chip_config.get("core", "Cortex-M3")
+            port_rel = fr_cfg.get("port_map", {}).get(core_name, "portable/RVDS/ARM_CM3")
+            gcc_port_rel = port_rel.replace("/RVDS/", "/GCC/")
+            heap = fr_cfg.get("heap", "heap_4.c")
+            core_files = fr_cfg.get("core_files", [])
+
+            srcs = [f'"FreeRTOS/{f}"' for f in core_files]
+            srcs.append(f'"FreeRTOS/{gcc_port_rel}/port.c"')
+            srcs.append(f'"FreeRTOS/portable/MemMang/{heap}"')
+            variables["FREERTOS_CMAKE_SOURCES"] = "\n    ".join(srcs)
+            variables["FREERTOS_CMAKE_INCLUDES"] = (
+                f"${{CMAKE_CURRENT_SOURCE_DIR}}/FreeRTOS/include\n"
+                f"    ${{CMAKE_CURRENT_SOURCE_DIR}}/FreeRTOS/{gcc_port_rel}"
+            )
+        else:
+            variables["FREERTOS_CMAKE_SOURCES"] = ""
+            variables["FREERTOS_CMAKE_INCLUDES"] = ""
+
+        return variables
+
+    def _generate_gcc(self, output_dir: Path, project_name: str, chip_config: dict,
+                       variables: dict):
+        """Generate CMakeLists.txt, linker script, and ensure GCC startup file exists."""
+        # Render linker script
+        ld_template = self._templates_dir / "common" / "linker.ld"
+        if ld_template.exists():
+            render(ld_template, output_dir / f"{project_name}.ld", variables)
+
+        # Render CMakeLists.txt
+        cmake_template = self._templates_dir / "common" / "CMakeLists.txt"
+        if cmake_template.exists():
+            render(cmake_template, output_dir / "CMakeLists.txt", variables)
+
+        # GCC startup file: SDK already copied to STARTUP/ if available.
+        # If not found (e.g., GD32F10x SDK has no GCC dir), fall back to bundled templates.
+        startup_file = variables["STARTUP_FILE"]
+        startup_dir = output_dir / "STARTUP"
+        startup_dir.mkdir(parents=True, exist_ok=True)
+        target = startup_dir / startup_file
+        if not target.exists():
+            gcc_startup_src = self._templates_dir / "gcc_startup" / startup_file
+            if gcc_startup_src.exists():
+                shutil.copy2(gcc_startup_src, target)
+            else:
+                for f in (self._templates_dir / "gcc_startup").iterdir():
+                    if f.name.lower() == startup_file.lower():
+                        shutil.copy2(f, target)
+                        break
+
+    def _gcc_freertos_port(self, output_dir: Path, chip_config: dict):
+        """Copy GCC FreeRTOS port files (separate from ARMCC/RVDS port)."""
+        fr_cfg = chip_config.get("optional_libs", {}).get("freertos", {})
+        core_name = chip_config.get("core", "Cortex-M3")
+        port_rel = fr_cfg.get("port_map", {}).get(core_name, "portable/RVDS/ARM_CM3")
+        gcc_port_rel = port_rel.replace("/RVDS/", "/GCC/")
+
+        sdk_root = self._sdk.get_path("SDK_ROOT")
+        freertos_sdk = self._sdk.resolve_sdk(sdk_root, fr_cfg.get("sdk_subdir", "FreeRTOS"))
+        if not freertos_sdk:
+            return
+
+        gcc_port_src = Path(freertos_sdk) / gcc_port_rel
+        gcc_port_dst = output_dir / "FreeRTOS" / gcc_port_rel
+        if gcc_port_src.is_dir():
+            gcc_port_dst.mkdir(parents=True, exist_ok=True)
+            for f in gcc_port_src.iterdir():
+                if f.is_file():
+                    (gcc_port_dst / f.name).write_bytes(f.read_bytes())
 
     @staticmethod
     def _scan_fwlib_files(project_dir: Path, exclude: list[str] | None = None) -> str:

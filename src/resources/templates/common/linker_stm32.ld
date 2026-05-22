@@ -1,29 +1,25 @@
-/* memory map */
+ENTRY(Reset_Handler)
+
+_estack = ORIGIN(RAM) + LENGTH(RAM);
+
+_Min_Heap_Size = 0x200;
+_Min_Stack_Size = 0x400;
+
 MEMORY
 {
   FLASH (rx)      : ORIGIN = {{ROM_START}}, LENGTH = {{ROM_SIZE}}
   RAM (xrw)       : ORIGIN = {{RAM_START}}, LENGTH = {{RAM_SIZE}}
-{{TCMRAM_MEMORY}}
 }
-
-ENTRY(Reset_Handler)
-
-__stack_size = DEFINED(__stack_size) ? __stack_size : 2K;
-__heap_size = DEFINED(__heap_size) ? __heap_size : 1K;
 
 SECTIONS
 {
-  /* ISR vectors */
   .isr_vector :
   {
     . = ALIGN(4);
     KEEP(*(.isr_vector))
     . = ALIGN(4);
-    __Vectors_End = .;
-    __Vectors_Size = __Vectors_End - g_pfnVectors;
   } >FLASH
 
-  /* text section, such as program code */
   .text :
   {
     . = ALIGN(4);
@@ -38,7 +34,6 @@ SECTIONS
     _etext = .;
   } >FLASH
 
-  /* ro-data section, such as constant data */
   .rodata :
   {
     . = ALIGN(4);
@@ -47,24 +42,16 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
-  /* exception process table */
   .ARM.extab :
   {
     *(.ARM.extab* .gnu.linkonce.armextab.*)
   } >FLASH
 
-  /* exception process table index */
   .ARM :
   {
     __exidx_start = .;
     *(.ARM.exidx*)
     __exidx_end = .;
-  } >FLASH
-
-  /* ARM attributes */
-  .ARM.attributes :
-  {
-   *(.ARM.attributes)
   } >FLASH
 
   .preinit_array :
@@ -90,8 +77,8 @@ SECTIONS
     PROVIDE_HIDDEN (__fini_array_end = .);
   } >FLASH
 
-  /* provide some necessary symbols for initialized data */
   _sidata = LOADADDR(.data);
+
   .data :
   {
     . = ALIGN(4);
@@ -102,11 +89,9 @@ SECTIONS
     _edata = .;
   } > RAM AT> FLASH
 
-  /* provide some necessary symbols for uninitialized data */
   . = ALIGN(4);
   .bss :
   {
-    . = ALIGN(4);
     _sbss = .;
     __bss_start__ = _sbss;
     *(.bss)
@@ -117,22 +102,22 @@ SECTIONS
     __bss_end__ = _ebss;
   } > RAM
 
-  /* heap and stack space */
-  .heap_stack :
+  ._user_heap_stack :
   {
     . = ALIGN(8);
-    PROVIDE ( end = _ebss );
-    PROVIDE ( _end = _ebss );
-    . = . + __heap_size;
-    PROVIDE( _heap_end = . );
-    . = . + __stack_size;
-    PROVIDE( _sp = . );
-    PROVIDE( _estack = _sp );
+    PROVIDE ( end = . );
+    PROVIDE ( _end = . );
+    . = . + _Min_Heap_Size;
+    . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } > RAM
 
-{{TCMRAM_SECTION}}
-}
+  /DISCARD/ :
+  {
+    libc.a ( * )
+    libm.a ( * )
+    libgcc.a ( * )
+  }
 
-/* input sections */
-GROUP(libgcc.a libc.a libm.a libnosys.a)
+  .ARM.attributes 0 : { *(.ARM.attributes) }
+}

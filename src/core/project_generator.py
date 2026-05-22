@@ -369,18 +369,15 @@ class ProjectGenerator:
         if not sdk_root or not sdk_root.is_dir():
             return
 
-        # Search GD32 Embedded Builder (has extra dir level: GD32EmbeddedBuilder*/GD32EmbeddedBuilder/plugins/...)
-        for ext in [startup_file, startup_file.replace(".s", ".S")]:
-            for pattern in [
-                f"GD32EmbeddedBuilder*/GD32EmbeddedBuilder/plugins/*/Firmware/gcc_startup/{ext}",
-                f"GD32EmbeddedBuilder*/plugins/*/Firmware/gcc_startup/{ext}",
-            ]:
-                matches = list(sdk_root.glob(pattern))
-                if matches:
-                    target = output_dir / "STARTUP" / startup_file
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(matches[0], target)
-                    return
+        # Search GD32 Embedded Builder (recursive under any GD32EmbeddedBuilder* dir)
+        for ext in (startup_file, startup_file.replace(".s", ".S")):
+            for eb_dir in sdk_root.glob("GD32EmbeddedBuilder*"):
+                if eb_dir.is_dir():
+                    for match in eb_dir.rglob(f"gcc_startup/{ext}"):
+                        target = output_dir / "STARTUP" / startup_file
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(match, target)
+                        return
 
         # Broader SDK-wide search for GCC startup in gcc dirs
         base_name = Path(startup_file).stem

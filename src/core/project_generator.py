@@ -369,32 +369,54 @@ class ProjectGenerator:
         if not sdk_root or not sdk_root.is_dir():
             return
 
-        # Look for GCC startup in GD32 Embedded Builder plugins
-        for pattern in [
-            "GD32EmbeddedBuilder*/plugins/*/Firmware/gcc_startup/" + startup_file,
-            "GD32EmbeddedBuilder*/plugins/*/Firmware/gcc_startup/" + startup_file.replace(".s", ".S"),
-        ]:
-            matches = list(sdk_root.glob(pattern))
-            if matches:
-                target = output_dir / "STARTUP" / startup_file
-                target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(matches[0], target)
-                return
-
-        # Also search for any matching startup file in SDK root's gcc dirs
-        for ext in [".S", ".s"]:
-            alt_name = Path(startup_file).stem + ext
-            for gcc_dir_pattern in [
-                f"*/Source/GCC/{alt_name}",
-                f"*/startup/gcc_ride7/{alt_name}",
-                f"*/startup/TrueSTUDIO/{alt_name}",
+        # Search GD32 Embedded Builder (has extra dir level: GD32EmbeddedBuilder*/GD32EmbeddedBuilder/plugins/...)
+        for ext in [startup_file, startup_file.replace(".s", ".S")]:
+            for pattern in [
+                f"GD32EmbeddedBuilder*/GD32EmbeddedBuilder/plugins/*/Firmware/gcc_startup/{ext}",
+                f"GD32EmbeddedBuilder*/plugins/*/Firmware/gcc_startup/{ext}",
             ]:
-                matches = list(sdk_root.glob(gcc_dir_pattern))
+                matches = list(sdk_root.glob(pattern))
                 if matches:
                     target = output_dir / "STARTUP" / startup_file
                     target.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(matches[0], target)
                     return
+
+        # Broader SDK-wide search for GCC startup in gcc dirs
+        base_name = Path(startup_file).stem
+        for ext in [".S", ".s"]:
+            for gcc_dir_pattern in [
+                f"**/Source/GCC/{base_name}{ext}",
+                f"**/startup/gcc_ride7/{base_name}{ext}",
+                f"**/startup/TrueSTUDIO/{base_name}{ext}",
+            ]:
+                matches = list(sdk_root.glob(gcc_dir_pattern))
+                for m in matches:
+                    if "/IAR/" not in str(m) and "/ARM/" not in str(m):
+                        target = output_dir / "STARTUP" / startup_file
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(m, target)
+                        return
+
+    def _gcc_freertos_port(self, output_dir: Path, chip_config: dict):
+        """Copy GCC FreeRTOS port files (portable/GCC/ instead of portable/RVDS/)."""
+        fr_cfg = chip_config.get("optional_libs", {}).get("freertos", {})
+        core_name = chip_config.get("core", "Cortex-M3")
+        port_rel = fr_cfg.get("port_map", {}).get(core_name, "portable/RVDS/ARM_CM3")
+        gcc_port_rel = port_rel.replace("/RVDS/", "/GCC/")
+
+        sdk_root = self._sdk.get_path("SDK_ROOT")
+        freertos_sdk = self._sdk.resolve_sdk(sdk_root, fr_cfg.get("sdk_subdir", "FreeRTOS"))
+        if not freertos_sdk:
+            return
+
+        gcc_port_src = Path(freertos_sdk) / gcc_port_rel
+        gcc_port_dst = output_dir / "FreeRTOS" / gcc_port_rel
+        if gcc_port_src.is_dir():
+            gcc_port_dst.mkdir(parents=True, exist_ok=True)
+            for f in gcc_port_src.iterdir():
+                if f.is_file():
+                    (gcc_port_dst / f.name).write_bytes(f.read_bytes())
         """Copy GCC FreeRTOS port files (separate from ARMCC/RVDS port)."""
         fr_cfg = chip_config.get("optional_libs", {}).get("freertos", {})
         core_name = chip_config.get("core", "Cortex-M3")

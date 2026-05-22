@@ -171,10 +171,11 @@ class SDKManager:
         sdk_root = Path(self.get_path("SDK_ROOT")) if self.get_path("SDK_ROOT") else None
         if sdk_root and sdk_root.is_dir():
             startup_file = chip_config.get("startup", "")
-            for eb_pattern in [
-                f"GD32EmbeddedBuilder*/plugins/*/Firmware/gcc_startup/{startup_file}",
-                f"GD32EmbeddedBuilder*/plugins/*/Firmware/gcc_startup/{startup_file.replace('.s', '.S')}",
-            ]:
-                for match in sdk_root.glob(eb_pattern):
-                    (gcc_dest / startup_file).write_bytes(match.read_bytes())
-                    return
+            for ext in [startup_file, startup_file.replace(".s", ".S")]:
+                for eb_pattern in [
+                    f"GD32EmbeddedBuilder*/GD32EmbeddedBuilder/plugins/*/Firmware/gcc_startup/{ext}",
+                    f"GD32EmbeddedBuilder*/plugins/*/Firmware/gcc_startup/{ext}",
+                ]:
+                    for match in sdk_root.glob(eb_pattern):
+                        (gcc_dest / startup_file).write_bytes(match.read_bytes())
+                        return

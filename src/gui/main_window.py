@@ -105,7 +105,7 @@ class MainWindow(QMainWindow):
         row3 = QHBoxLayout()
         self._out_label = QLabel()
         row3.addWidget(self._out_label)
-        self._output_dir = QLineEdit(str(Path.home() / "Desktop"))
+        self._output_dir = QLineEdit("E:/TestDemo")
         row3.addWidget(self._output_dir)
         self._out_btn = QPushButton()
         self._out_btn.clicked.connect(self._browse_output)

@@ -355,12 +355,25 @@ class ProjectGenerator:
 
         if not target.exists():
             family = chip_config.get("family", "")
+            vendor = chip_config.get("vendor", "")
+            if "GD32" in family:
+                download = (
+                    f"Download 'GD32 Embedded Builder' from gigadevice.com:\n"
+                    f"  https://www.gd32mcu.com/en/download?kw=GD32+Embedded+Builder\n"
+                    f"After installation, copy the GD32EmbeddedBuilder folder to:\n"
+                    f"  {self._sdk.get_path('SDK_ROOT') or 'your SDK root directory'}"
+                )
+            elif "STM32" in family:
+                download = (
+                    f"The STM32 standard peripheral library should include GCC startup\n"
+                    f"files under 'startup/gcc_ride7/' or 'TrueSTUDIO/'.\n"
+                    f"Make sure you have the full SPL package, not just CMSIS."
+                )
+            else:
+                download = "Please ensure your SDK package includes GCC startup files."
             raise FileNotFoundError(
-                f"GCC startup file '{startup_file}' not found.\n"
-                f"The {family} SDK does not include GCC startup files.\n"
-                f"Please download 'GD32 Embedded Builder' from gigadevice.com\n"
-                f"and place it in the SDK root directory, or ensure the SDK\n"
-                f"package includes 'GCC/' or 'gcc_ride7/' startup directory.")
+                f"GCC startup file '{startup_file}' not found for {family}.\n"
+                f"{download}")
 
     def _resolve_gcc_startup_from_sdk(self, output_dir: Path, chip_config: dict,
                                         startup_file: str):

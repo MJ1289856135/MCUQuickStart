@@ -339,6 +339,19 @@ class ProjectGenerator:
         if ld_template.exists():
             render(ld_template, output_dir / f"{project_name}.ld", variables)
 
+        # Generate filtered source file list (respects fwlib_exclude)
+        exclude_fwlib = set(chip_config.get("fwlib_exclude", []))
+        c_sources = []
+        for d, pattern in [("CMSIS", "**/*.c"), ("FIRMWARE/Source", "*.c"),
+                           ("SYSTEM", "**/*.c"), ("USER", "*.c"),
+                           ("APP", "*.c"), ("DRIVER", "*.c"), ("HARDWARE", "*.c")]:
+            src_dir = output_dir / d
+            if src_dir.is_dir():
+                for f in sorted(src_dir.glob(pattern)):
+                    if f.name not in exclude_fwlib:
+                        c_sources.append(f"    {d}/{f.name}")
+        variables["CMAKE_SOURCES"] = "\n".join(c_sources)
+
         # Render CMakeLists.txt
         cmake_template = self._templates_dir / "common" / "CMakeLists.txt"
         if cmake_template.exists():

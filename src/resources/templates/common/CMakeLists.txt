@@ -22,6 +22,7 @@ add_compile_options(
     -fmessage-length=0
     -Wall
     -Wno-unused-function
+    -Wno-macro-redefined
 )
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
@@ -50,16 +51,10 @@ set_source_files_properties(
 )
 enable_language(ASM)
 
-# Collect sources
-file(GLOB_RECURSE SOURCES
-    "STARTUP/{{STARTUP_FILE}}"
-    "APP/*.c"
-    "CMSIS/*.c"
-    "DRIVER/*.c"
-    "FIRMWARE/*.c"
-    "HARDWARE/*.c"
-    "SYSTEM/*.c"
-    "USER/*.c"
+# Collect sources (pre-filtered by generator to exclude unsupported files)
+set(SOURCES
+    STARTUP/{{STARTUP_FILE}}
+    {{CMAKE_SOURCES}}
     {{FREERTOS_CMAKE_SOURCES}}
 )
 

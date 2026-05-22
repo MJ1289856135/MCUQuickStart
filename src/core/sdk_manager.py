@@ -75,9 +75,11 @@ class SDKManager:
         cmsis = chip_config["cmsis"]
         sdk_base = Path(sdk_root)
 
-        # Copy CMSIS core headers
+        # Copy CMSIS core headers (prefer newer version from any SDK in root)
         for header in cmsis["core_headers"]:
-            src = self.find_file(sdk_base, header)
+            src = self._find_newer_cmsis(header, sdk_base)
+            if not src:
+                src = self.find_file(sdk_base, header)
             if src:
                 dest = dest_dir / "CMSIS" / header
                 dest.parent.mkdir(parents=True, exist_ok=True)
@@ -139,6 +141,27 @@ class SDKManager:
 
         # Copy GCC startup files if SDK has them (as sibling of ARM startup dir)
         self._copy_gcc_startup(sdk_base, cmsis, dest_dir, chip_config)
+
+    def _find_newer_cmsis(self, header: str, sdk_base: Path) -> Path | None:
+        """Find a newer version of a CMSIS core header from any SDK package in root."""
+        sdk_root = Path(self.get_path("SDK_ROOT")) if self.get_path("SDK_ROOT") else None
+        if not sdk_root or not sdk_root.is_dir():
+            return None
+
+        own = self.find_file(sdk_base, header)
+        own_content = own.read_text(encoding="utf-8", errors="replace") if own else ""
+
+        # Try other SDK packages for a version that has DWT_Type / ITM_Type (newer CMSIS)
+        for alt in sorted(sdk_root.iterdir()):
+            if not alt.is_dir() or alt.samefile(sdk_base):
+                continue
+            candidate = self.find_file(alt, header)
+            if not candidate:
+                continue
+            content = candidate.read_text(encoding="utf-8", errors="replace")
+            if "DWT_Type" in content and "DWT_Type" not in own_content:
+                return candidate  # newer CMSIS found
+        return None
 
     def _copy_gcc_startup(self, sdk_base: Path, cmsis: dict, dest_dir: Path, chip_config: dict):
         """Copy GCC-compatible startup files from SDK (gcc_ride7/, GCC/, TrueSTUDIO/ dirs)."""

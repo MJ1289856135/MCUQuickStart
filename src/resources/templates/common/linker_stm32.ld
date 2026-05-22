@@ -127,6 +127,7 @@ SECTIONS
     PROVIDE( _heap_end = . );
     . = . + __stack_size;
     PROVIDE( _sp = . );
+    PROVIDE( _estack = _sp );
     . = ALIGN(8);
   } > RAM
 

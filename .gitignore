@@ -7,3 +7,10 @@ __pycache__/
 .vscode/
 dist/
 build/
+.download_cache.json
+check_downloads.py
+docs/
+*.stackdump
+.agents/
+.claude/
+skills-lock.json
